@@ -1,14 +1,26 @@
-use std::ffi::{OsStr, OsString};
 use clap::{Parser, Subcommand};
 use colored::Colorize;
 use std::io::{self, Write};
 use std::process::Command;
+
+#[cfg(windows)]
 use windows::core::PCWSTR;
-use windows::Win32::Storage::FileSystem::{GetDriveTypeA, GetDriveTypeW, GetLogicalDrives};
+#[cfg(windows)]
+use windows::Win32::Storage::FileSystem::{GetDriveTypeW, GetLogicalDrives};
+
+#[cfg(unix)]
+use std::path::Path;
+#[cfg(unix)]
+use nix::mount;
+#[cfg(unix)]
+use sysinfo::{DiskExt, System, SystemExt};
+#[cfg(unix)]
+use std::fs;
+
 #[derive(Parser)]
 #[command(
     name = "fixr",
-    about = "Taşınabilir disk yönetim aracı",
+    about = "Çapraz Platform Disk Yönetim Aracı",
     version = "1.0",
     author = "Your Name"
 )]
@@ -16,8 +28,6 @@ struct Cli {
     #[command(subcommand)]
     command: Commands,
 }
-
-const DRIVE_REMOVABLE: u32 = 2;
 
 #[derive(Subcommand)]
 enum Commands {
@@ -39,11 +49,14 @@ enum Commands {
 }
 
 struct DriveInfo {
-    letter: String,
+    path: String,
     is_removable: bool,
     total_space: u64,
     free_space: u64,
 }
+
+#[cfg(windows)]
+const DRIVE_REMOVABLE: u32 = 2;
 
 fn main() -> io::Result<()> {
     let cli = Cli::parse();
@@ -63,6 +76,8 @@ fn main() -> io::Result<()> {
     Ok(())
 }
 
+// Platform-specific implementations
+#[cfg(windows)]
 fn validate_drive(s: &str) -> Result<String, String> {
     let s = s.to_uppercase();
     if s.len() == 2 && s.ends_with(':') && s.chars().next().unwrap().is_ascii_uppercase() {
@@ -72,6 +87,17 @@ fn validate_drive(s: &str) -> Result<String, String> {
     }
 }
 
+#[cfg(unix)]
+fn validate_drive(s: &str) -> Result<String, String> {
+    let path = Path::new(s);
+    if path.exists() && path.to_string_lossy().starts_with("/dev/") {
+        Ok(s.to_string())
+    } else {
+        Err("Geçersiz disk yolu. Örnek: '/dev/sdb1'".to_string())
+    }
+}
+
+#[cfg(windows)]
 fn list_drives(verbose: bool) -> io::Result<()> {
     let drives = get_removable_drives()?;
 
@@ -102,6 +128,47 @@ fn list_drives(verbose: bool) -> io::Result<()> {
     Ok(())
 }
 
+#[cfg(unix)]
+fn list_drives(verbose: bool) -> io::Result<()> {
+    let mut sys = System::new_all();
+    sys.refresh_all();
+
+    let removable_disks: Vec<_> = sys.disks().iter()
+        .filter(|disk| is_removable(disk.mount_point().to_str().unwrap_or("")))
+        .collect();
+
+    if removable_disks.is_empty() {
+        println!("{}", "Hiçbir taşınabilir disk bulunamadı.".yellow());
+        return Ok(());
+    }
+
+    println!("{}", "\nTaşınabilir Diskler:".green().bold());
+    println!("{}", "=================".green());
+
+    for disk in removable_disks {
+        let mount_point = disk.mount_point().to_str().unwrap_or("");
+        if verbose {
+            let total_gb = disk.total_space() as f64 / 1_073_741_824.0;
+            let free_gb = disk.available_space() as f64 / 1_073_741_824.0;
+            println!(
+                "{} ({}) - Toplam: {:.2} GB, Boş: {:.2} GB",
+                disk.name().to_str().unwrap_or("").blue().bold(),
+                mount_point,
+                total_gb,
+                free_gb
+            );
+        } else {
+            println!("{} ({})",
+                     disk.name().to_str().unwrap_or("").blue().bold(),
+                     mount_point
+            );
+        }
+    }
+    println!();
+    Ok(())
+}
+
+#[cfg(windows)]
 fn fix_drive(disk: &str, force: bool) -> io::Result<()> {
     if !is_removable(disk) {
         return Err(io::Error::new(
@@ -122,6 +189,37 @@ fn fix_drive(disk: &str, force: bool) -> io::Result<()> {
         command.arg("/F");
     }
 
+    execute_repair_command(command)
+}
+
+#[cfg(unix)]
+fn fix_drive(disk: &str, force: bool) -> io::Result<()> {
+    if !is_removable(disk) {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidInput,
+            "Belirtilen aygıt taşınabilir disk değil!",
+        ));
+    }
+
+    if force {
+        // Linux'ta diski unmount et
+        let _ = unmount_drive(disk);
+    }
+
+    print!("Disk onarımı başlatılıyor... ");
+    io::stdout().flush()?;
+
+    let mut command = Command::new("fsck");
+    command.arg("-y").arg(disk);
+
+    if force {
+        command.arg("-f");
+    }
+
+    execute_repair_command(command)
+}
+
+fn execute_repair_command(mut command: Command) -> io::Result<()> {
     let output = command.output()?;
 
     if output.status.success() {
@@ -142,6 +240,7 @@ fn fix_drive(disk: &str, force: bool) -> io::Result<()> {
     }
 }
 
+#[cfg(windows)]
 fn show_drive_info(disk: &str) -> io::Result<()> {
     if !is_removable(disk) {
         return Err(io::Error::new(
@@ -151,8 +250,31 @@ fn show_drive_info(disk: &str) -> io::Result<()> {
     }
 
     let info = get_drive_info(disk)?;
-    let total_gb = info.total_space as f64 / 1_073_741_824.0;
-    let free_gb = info.free_space as f64 / 1_073_741_824.0;
+    display_drive_info(disk, info.total_space, info.free_space)
+}
+
+#[cfg(unix)]
+fn show_drive_info(disk: &str) -> io::Result<()> {
+    let mut sys = System::new_all();
+    sys.refresh_all();
+
+    let disk_info = sys.disks().iter()
+        .find(|d| d.name().to_str().unwrap_or("") == disk)
+        .ok_or_else(|| io::Error::new(
+            io::ErrorKind::NotFound,
+            "Disk bulunamadı!"
+        ))?;
+
+    display_drive_info(
+        disk,
+        disk_info.total_space(),
+        disk_info.available_space()
+    )
+}
+
+fn display_drive_info(disk: &str, total_space: u64, free_space: u64) -> io::Result<()> {
+    let total_gb = total_space as f64 / 1_073_741_824.0;
+    let free_gb = free_space as f64 / 1_073_741_824.0;
     let used_gb = total_gb - free_gb;
     let usage_percent = (used_gb / total_gb) * 100.0;
 
@@ -166,6 +288,8 @@ fn show_drive_info(disk: &str) -> io::Result<()> {
     Ok(())
 }
 
+// Platform-specific helper functions
+#[cfg(windows)]
 fn get_removable_drives() -> io::Result<Vec<String>> {
     let mut drives = Vec::new();
     let drive_mask = unsafe { GetLogicalDrives() };
@@ -188,24 +312,45 @@ fn get_removable_drives() -> io::Result<Vec<String>> {
     Ok(drives)
 }
 
-
-
+#[cfg(windows)]
 fn is_removable(drive: &str) -> bool {
     let drive_path = format!("{}\\", drive);
     let mut wide_path: Vec<u16> = drive_path.encode_utf16().collect();
-    wide_path.push(0); // Null terminate
+    wide_path.push(0);
     unsafe {
         GetDriveTypeW(PCWSTR(wide_path.as_ptr())) == DRIVE_REMOVABLE
     }
 }
 
+#[cfg(unix)]
+fn is_removable(path: &str) -> bool {
+    if let Some(device_name) = Path::new(path)
+        .file_name()
+        .and_then(|n| n.to_str())
+        .and_then(|n| n.strip_prefix("sd"))
+    {
+        let removable_path = format!("/sys/block/sd{}/removable", device_name);
+        if let Ok(content) = fs::read_to_string(removable_path) {
+            return content.trim() == "1";
+        }
+    }
+    false
+}
 
+#[cfg(unix)]
+fn unmount_drive(path: &str) -> io::Result<()> {
+    match mount::umount(path) {
+        Ok(_) => Ok(()),
+        Err(e) => Err(io::Error::new(io::ErrorKind::Other, e.to_string()))
+    }
+}
 
+#[cfg(windows)]
 fn get_drive_info(drive: &str) -> io::Result<DriveInfo> {
     Ok(DriveInfo {
-        letter: drive.to_string(),
+        path: drive.to_string(),
         is_removable: is_removable(drive),
-        total_space: 1000000000,
-        free_space: 500000000,
+        total_space: 1000000000,  // Windows API'den gerçek değerleri almalısınız
+        free_space: 500000000,    // Windows API'den gerçek değerleri almalısınız
     })
 }
