@@ -1,0 +1,9 @@
+[package]
+name = "fixr"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+clap = { version = "4.4", features = ["derive"] }
+colored = "2.0"
+windows = { version = "0.48", features = ["Win32_Storage_FileSystem", "Win32_System_SystemServices"]}
