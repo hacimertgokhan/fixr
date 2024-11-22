@@ -1,7 +1,6 @@
 # 🔧 Fixr - Portable Disk Management Tool
 
-![License](https://img.shields.io/badge/license-MIT-blue.svg)  
-![Rust](https://img.shields.io/badge/rust-1.75%2B-orange.svg)  
+![License](https://img.shields.io/badge/license-MIT-blue.svg)   ![Rust](https://img.shields.io/badge/rust-1.75%2B-orange.svg)  
 
 Fixr is a command-line tool designed to manage and repair portable disks on Windows systems efficiently.
 
