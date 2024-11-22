@@ -1,111 +1,111 @@
-# 🔧 Fixr - Taşınabilir Disk Yönetim Aracı
+# 🔧 Fixr - Portable Disk Management Tool
 
-![License](https://img.shields.io/badge/license-MIT-blue.svg)
-![Rust](https://img.shields.io/badge/rust-1.75%2B-orange.svg)
+![License](https://img.shields.io/badge/license-MIT-blue.svg)  
+![Rust](https://img.shields.io/badge/rust-1.75%2B-orange.svg)  
 
-Fixr, Windows sistemlerde taşınabilir diskleri yönetmek ve onarım işlemlerini kolaylaştırmak için geliştirilmiş, komut satırı tabanlı bir araçtır.
+Fixr is a command-line tool designed to manage and repair portable disks on Windows systems efficiently.
 
-## ✨ Özellikler
+## ✨ Features
 
-- 📝 Sistemdeki tüm taşınabilir diskleri listeleme
-- 🔍 Disk detaylarını görüntüleme (boyut, kullanım oranı, vb.)
-- 🛠️ Disk onarımı gerçekleştirme
-- 🎨 Renkli ve kullanıcı dostu arayüz
+- 📝 List all portable disks in the system
+- 🔍 View disk details (size, usage, etc.)
+- 🛠️ Perform disk repair operations
+- 🎨 Colorful and user-friendly interface
 
-## 🚀 Kurulum
+## 🚀 Installation
 
 ```bash
-# Repository'yi klonlayın
-git clone https://github.com/kullaniciadi/fixr.git
+# Clone the repository
+git clone https://github.com/username/fixr.git
 
-# Proje dizinine gidin
+# Navigate to the project directory
 cd fixr
 
-# Uygulamayı derleyin
+# Build the application
 cargo build --release
 
-# Çalıştırılabilir dosya target/release dizininde oluşturulacaktır
+# The executable will be available in the target/release directory
 ```
 
-## 📖 Kullanım
+## 📖 Usage
 
-### Taşınabilir Diskleri Listeleme
+### Listing Portable Disks
 
 ```bash
-# Basit liste
+# Simple list
 fixr list
 
-# Detaylı liste (boyut bilgileri ile)
+# Detailed list (with size information)
 fixr list --verbose
 ```
 
-### Disk Bilgilerini Görüntüleme
+### Viewing Disk Information
 
 ```bash
-# F: sürücüsünün bilgilerini göster
+# Display details of the F: drive
 fixr info F:
 ```
 
-### Disk Onarımı
+### Repairing a Disk
 
 ```bash
-# Temel onarım
+# Basic repair
 fixr fix F:
 
-# Zorla onarım (dikkatli kullanın!)
+# Force repair (use with caution!)
 fixr fix F: --force
 ```
 
-## 🔍 Komut Detayları
+## 🔍 Command Details
 
-### `list` Komutu
-- Sistemdeki tüm taşınabilir diskleri listeler
-- `--verbose` parametresi ile detaylı bilgileri gösterir
+### `list` Command
+- Lists all portable disks in the system
+- Displays detailed information with the `--verbose` parameter
 
-### `info` Komutu
-- Belirtilen diskin detaylı bilgilerini gösterir:
-  - Toplam alan
-  - Kullanılan alan
-  - Boş alan
-  - Kullanım yüzdesi
+### `info` Command
+- Shows detailed information for the specified disk:
+  - Total space
+  - Used space
+  - Free space
+  - Usage percentage
 
-### `fix` Komutu
-- Disk onarımı gerçekleştirir
-- `--force` parametresi ile zorla onarım yapabilir
-- Windows'un `chkdsk` aracını kullanır
+### `fix` Command
+- Repairs the specified disk
+- Supports forced repair with the `--force` parameter
+- Utilizes Windows' `chkdsk` tool
 
-## ⚠️ Önemli Notlar
+## ⚠️ Important Notes
 
-1. Onarım işlemi öncesi önemli verilerinizi yedekleyin
-2. `--force` parametresini dikkatli kullanın
-3. Programı yönetici (Administrator) olarak çalıştırmanız gerekebilir
+1. Back up your important data before performing repair operations.  
+2. Use the `--force` parameter carefully.  
+3. The program may require Administrator privileges to run.  
 
-## 🛠️ Geliştirme
+## 🛠️ Development
 
-### Gereksinimler
+### Requirements
 
-- Rust 1.75 veya üzeri
-- Windows işletim sistemi
-- Cargo ve ilgili araçlar
+- Rust 1.75 or later
+- Windows operating system
+- Cargo and related tools
 
-### Bağımlılıklar
+### Dependencies
 
-- clap: Komut satırı argüman işleme
-- colored: Terminal renklendirme
-- windows: Windows API entegrasyonu
+- **clap**: Command-line argument handling  
+- **colored**: Terminal text coloring  
+- **windows**: Windows API integration  
 
-## 📝 Lisans
+## 📝 License
 
-Bu proje MIT lisansı altında lisanslanmıştır. Detaylar için [LICENSE](LICENSE) dosyasına bakınız.
+This project is licensed under the MIT license. See the [LICENSE](LICENSE) file for more details.
 
-## 🤝 Katkıda Bulunma
+## 🤝 Contributing
 
-1. Bu repository'yi fork edin
-2. Yeni bir branch oluşturun (`git checkout -b feature/yeniOzellik`)
-3. Değişikliklerinizi commit edin (`git commit -am 'Yeni özellik eklendi'`)
-4. Branch'inizi push edin (`git push origin feature/yeniOzellik`)
-5. Bir Pull Request oluşturun
+1. Fork this repository.  
+2. Create a new branch (`git checkout -b feature/newFeature`).  
+3. Commit your changes (`git commit -am 'Added a new feature'`).  
+4. Push your branch (`git push origin feature/newFeature`).  
+5. Create a Pull Request.  
 
-## 📞 İletişim
+## 📞 Contact
 
-Sorularınız veya önerileriniz için lütfen GitHub üzerinden issue açın.
+For questions or suggestions, please open an issue on GitHub.  
